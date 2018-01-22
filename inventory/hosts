@@ -1,0 +1,2 @@
+[erl-vm]
+192.168.54.17 ansible_user=vagrant ansible_connection=local
