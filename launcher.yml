@@ -1,2 +1,6 @@
 ---
 - hosts: localhost
+
+
+  pre-tasks:
+    - name: Install

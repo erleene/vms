@@ -5,34 +5,21 @@ VM_NAME = 'erl-dev'
 VM_USER = 'vagrant'
 LINUX_USER = 'erleene'
 VM_PORT = '8080'
+DEVOPS_ANSIBLE_DEV_REPO = 'Documents/beamery/devops-ansible-dev-setup'
+FILE_TO_DISK = './tmp/large_disk.vdi'
 # Host folder to sync
-HOST_PATH = '/home/' + LINUX_USER + '/' + VM_NAME
+#HOST_PATH = '/home/' + LINUX_USER + '/' + VM_NAME
+HOST_PATH = '/home/' + LINUX_USER + '/' + DEVOPS_ANSIBLE_DEV_REPO
 # Where to sync to on Guest — 'vagrant' is the default user name
-GUEST_PATH = '/home/' + VM_USER + '/' + VM_NAME
+GUEST_PATH = '/home/' + VM_USER + '/' + DEVOPS_ANSIBLE_DEV_REPO
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
 # you're doing.
 Vagrant.configure("2") do |config|
-  # The most common configuration options are documented and commented below.
-  # For a complete reference, please see the online documentation at
-  # https://docs.vagrantup.com.
-
-  # Every Vagrant development environment requires a box. You can search for
-  # boxes at https://vagrantcloud.com/search.
   config.vm.hostname = VM_NAME
   config.vm.box = "ubuntu/trusty64"
   config.vm.box_version = "20180110.0.0"
-
-  # Set VM name in Virtualbox
-  config.vm.provider "virtualbox" do |v|
-    v.name = VM_NAME
-    v.memory = 4096
-    v.gui = true
-    v.cpus = 3
-
-  end
-
   config.vm.network :forwarded_port, guest: 80, host: VM_PORT
   config.vm.network "private_network", ip: "192.168.54.17"
   #config.vm.network "private_network", type: "dhcp"
@@ -41,13 +28,50 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder HOST_PATH, GUEST_PATH
 
   # Disable default Vagrant folder, use a unique path per project
-  config.vm.synced_folder '.', '/home/'+VM_USER+'', disabled: true
+  config.vm.synced_folder '.', '/home/'+VM_USER+'', disabled: false
 
-  config.vm.provision "ansible" do |p|
-    p.playbook = "launcher.yml"
-    p.verbose = true
-    p.install_mode = "pip"
-    p.version = "2.3.1.0"
+  # Set VM name in Virtualbox
+  config.vm.provider "virtualbox" do |v|
+    v.name = VM_NAME
+    v.memory = 4096
+    v.gui = true
+    v.cpus = 3
+    unless File.exist?(FILE_TO_DISK)
+      v.customize ['createhd', '--filename', FILE_TO_DISK, '--size', 30 * 1024]
+    end
+    v.customize ['storageattach', :id, '--storagectl', 'SATAController', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', FILE_TO_DISK]
+
+    # if ARGV[0] == "up" && !File.exists?(FILE_TO_DISK)
+    #   v.customize [
+    #       'createhd',
+    #       '--filename', FILE_TO_DISK,
+    #       '--size', 30 * 1024 # 30GB
+    #   ]
+    #   v.customize [
+    #       'storageattach': id,
+    #       '--storagectl', 'SATA Controller',
+    #       '--port', 1 '--device', 0,
+    #       '--type', 'hdd', '--medium',
+    #       FILE_TO_DISK
+    #   ]
+    # end
+  end
+
+$script = <<SCRIPT
+echo I am provisioning...
+DEVOPS_ANSIBLE_DEV_REPO='/Documents/beamery/devops-ansible-dev-setup'
+${DEVOPS_ANSIBLE_DEV_REPO}/installer.sh
+SCRIPT
+
+  config.vm.provision "shell",
+    inline: $script
+
+
+  # config.vm.provision "ansible" do |p|
+  #   p.playbook = "launcher.yml"
+  #   p.verbose = true
+  #   p.install_mode = "pip"
+  #   p.version = "2.3.1.0"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
